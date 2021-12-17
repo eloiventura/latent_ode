@@ -317,7 +317,11 @@ if __name__ == '__main__':
 					test_dict = utils.get_next_batch(data_obj["test_dataloader"])
 
 					print("plotting....")
-					if isinstance(model, LatentODE) and (args.dataset == "periodic"): #and not args.classic_rnn and not args.ode_rnn:
+					if isinstance(model, LatentODE) and (
+						(args.dataset == "periodic") 
+						or (args.dataset == "periodic_d1")
+						or (args.dataset == "periodic_d2")
+						or (args.dataset == "periodic_rm")):
 						plot_id = itr // num_batches // n_iters_to_viz
 						viz.draw_all_plots_one_dim(test_dict, model, 
 							plot_name = file_name + "_" + str(experimentID) + "_{:03d}".format(plot_id) + ".png",
