@@ -11,7 +11,7 @@ import torch.nn as nn
 
 import lib.utils as utils
 from lib.diffeq_solver import DiffeqSolver
-from generate_timeseries import Periodic_1d
+from generate_timeseries import Periodic_1d, Periodic_1d_discontinuous1, Periodic_1d_discontinuous2, Periodic_1d_regularmissingdata
 from torch.distributions import uniform
 
 from torch.utils.data import DataLoader
@@ -205,7 +205,30 @@ def parse_datasets(args, device):
 			init_freq = None, init_amplitude = 1.,
 			final_amplitude = 1., final_freq = None, 
 			z0 = 1.)
-
+	##################################################################
+	# Sample a periodic function with first type of discontinuity
+	if dataset_name == "periodic_d1":    
+		dataset_obj = Periodic_1d_discontinuous1(
+			init_freq = None, init_amplitude = 1.,
+			final_amplitude = 1., final_freq = None, 
+			z0 = 1.)    
+        
+	##################################################################
+	# Sample a periodic function with first type of discontinuity
+	if dataset_name == "periodic_d2":    
+		dataset_obj = Periodic_1d_discontinuous2(
+			init_freq = None, init_amplitude = 1.,
+			final_amplitude = None, final_freq = None, 
+			z0 = 1.)       
+        
+	##################################################################
+	# Sample a periodic function with first type of discontinuity
+	if dataset_name == "periodic_rm":    
+		dataset_obj = Periodic_1d_regularmissingdata(
+			init_freq = None, init_amplitude = 1.,
+			final_amplitude = None, final_freq = None, 
+			z0 = 1.)           
+        
 	##################################################################
 
 	if dataset_obj is None:
