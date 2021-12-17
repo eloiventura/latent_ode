@@ -8,10 +8,10 @@ from __future__ import absolute_import, division
 from __future__ import print_function
 import os
 import matplotlib
-if os.path.exists("/Users/yulia"):
-	matplotlib.use('TkAgg')
-else:
-	matplotlib.use('Agg')
+# if os.path.exists("/Users/yulia"):
+# 	matplotlib.use('TkAgg')
+# else:
+# 	matplotlib.use('Agg')
 
 import numpy as np
 import numpy.random as npr
@@ -137,4 +137,195 @@ class Periodic_1d(TimeSeries):
 
 		traj_list = self.add_noise(traj_list, time_steps, noise_weight)
 		return traj_list
+    
+class Periodic_1d_discontinuous1(TimeSeries):
+	def __init__(self, device = torch.device("cpu"), 
+		init_freq = 0.3, init_amplitude = 1.,
+		final_amplitude = 10., final_freq = 1., 
+		z0 = 0.):
+		"""
+		If some of the parameters (init_freq, init_amplitude, final_amplitude, final_freq) is not provided, it is randomly sampled.
+		For now, all the time series share the time points and the starting point.
+		"""
+		super(Periodic_1d_discontinuous1, self).__init__(device)
+		
+		self.init_freq = init_freq
+		self.init_amplitude = init_amplitude
+		self.final_amplitude = final_amplitude
+		self.final_freq = final_freq
+		self.z0 = z0
+	def sample_traj(self, time_steps, n_samples = 1, noise_weight = 1.,
+		cut_out_section = None):
+		"""
+		Sample periodic functions. 
+		"""
+		def add_jump_discontinuity(traj_continuous): 
+			shift = np.random.randint(
+				int(len(traj_continuous)/50),                                       
+				int(len(traj_continuous)/20), 
+				np.random.randint(1, 5))
+			disc_index = np.random.randint(
+				max(shift),
+				len(traj_continuous)-max(shift),
+				size=len(shift))
+			traj_discont = traj_continuous
+			for i, s in zip(disc_index, shift):
+				traj_discont[i:] = traj_discont[i-s:len(traj_discont)-s] 
+			return traj_discont   
+		traj_list = []                
+		for i in range(n_samples):
+			init_freq = assign_value_or_sample(self.init_freq, [0.4,0.8])
+			if self.final_freq is None:
+				final_freq = init_freq
+			else:
+				final_freq = assign_value_or_sample(self.final_freq, [0.4,0.8])
+			init_amplitude = assign_value_or_sample(self.init_amplitude, [0.,1.])
+			final_amplitude = assign_value_or_sample(self.final_amplitude, [0.,1.])
 
+			noisy_z0 = self.z0 + np.random.normal(loc=0., scale=0.1)
+
+			traj = generate_periodic(time_steps, init_freq = init_freq, 
+				init_amplitude = init_amplitude, starting_point = noisy_z0, 
+				final_amplitude = final_amplitude, final_freq = final_freq)
+			traj = add_jump_discontinuity(traj)
+            
+			# Cut the time dimension
+			traj = np.expand_dims(traj[:,1:], 0)
+			traj_list.append(traj)
+
+		# shape: [n_samples, n_timesteps, 2]
+		# traj_list[:,:,0] -- time stamps
+		# traj_list[:,:,1] -- values at the time stamps
+		traj_list = np.array(traj_list)
+		traj_list = torch.Tensor().new_tensor(traj_list, device = self.device)
+		traj_list = traj_list.squeeze(1)
+
+		traj_list = self.add_noise(traj_list, time_steps, noise_weight)
+		return traj_list    
+
+class Periodic_1d_discontinuous2(TimeSeries):
+	def __init__(self, device = torch.device("cpu"), 
+		init_freq = 0.3, init_amplitude = 1.,
+		final_amplitude = 1., final_freq = 1., 
+		z0 = 0.):
+		"""
+		If some of the parameters (init_freq, init_amplitude, final_amplitude, final_freq) is not provided, it is randomly sampled.
+		For now, all the time series share the time points and the starting point.
+		"""
+		super(Periodic_1d_discontinuous2, self).__init__(device)
+		
+		self.init_freq = init_freq
+		self.init_amplitude = init_amplitude
+		self.final_amplitude = final_amplitude
+		self.final_freq = final_freq
+		self.z0 = z0
+	def sample_traj(self, time_steps, n_samples = 1, noise_weight = 1.,
+		cut_out_section = None):
+		"""
+		Sample periodic functions. 
+		"""
+		def add_step_discontinuity(traj_continuous, amp): 
+			shift = np.random.randint(
+				int(len(traj_continuous)/5),                                       
+				int(len(traj_continuous)/2), 
+				np.random.randint(1, 3))
+			disc_index = np.random.randint(
+				len(traj_continuous)-max(shift),
+				size=len(shift))
+			traj_discont = traj_continuous
+			for i, s in zip(disc_index, shift):
+				traj_discont[i:i+s] = traj_discont[i:i+s]+amp*0.75
+			return traj_discont   
+		traj_list = []                
+		for i in range(n_samples):
+			init_freq = assign_value_or_sample(self.init_freq, [0.4,0.8])
+			if self.final_freq is None:
+				final_freq = init_freq
+			else:
+				final_freq = assign_value_or_sample(self.final_freq, [0.4,0.8])
+			init_amplitude = assign_value_or_sample(self.init_amplitude, [0.,1.])
+			final_amplitude = assign_value_or_sample(self.final_amplitude, [0.,1.])
+
+			noisy_z0 = self.z0 + np.random.normal(loc=0., scale=0.1)
+
+			traj = generate_periodic(time_steps, init_freq = init_freq, 
+				init_amplitude = init_amplitude, starting_point = noisy_z0, 
+				final_amplitude = final_amplitude, final_freq = final_freq)
+			traj = add_step_discontinuity(traj, final_amplitude)
+            
+			# Cut the time dimension
+			traj = np.expand_dims(traj[:,1:], 0)
+			traj_list.append(traj)
+
+		# shape: [n_samples, n_timesteps, 2]
+		# traj_list[:,:,0] -- time stamps
+		# traj_list[:,:,1] -- values at the time stamps
+		traj_list = np.array(traj_list)
+		traj_list = torch.Tensor().new_tensor(traj_list, device = self.device)
+		traj_list = traj_list.squeeze(1)
+
+		traj_list = self.add_noise(traj_list, time_steps, noise_weight)
+		return traj_list 
+    
+class Periodic_1d_regularmissingdata(TimeSeries):
+	def __init__(self, device = torch.device("cpu"), 
+		init_freq = 0.3, init_amplitude = 1.,
+		final_amplitude = 1., final_freq = 1., 
+		z0 = 0.):
+		"""
+		If some of the parameters (init_freq, init_amplitude, final_amplitude, final_freq) is not provided, it is randomly sampled.
+		For now, all the time series share the time points and the starting point.
+		"""
+		super(Periodic_1d_regularmissingdata, self).__init__(device)
+		
+		self.init_freq = init_freq
+		self.init_amplitude = init_amplitude
+		self.final_amplitude = final_amplitude
+		self.final_freq = final_freq
+		self.z0 = z0
+	def sample_traj(self, time_steps, n_samples = 1, noise_weight = 1.,
+		cut_out_section = None):
+		"""
+		Sample periodic functions. 
+		"""
+		def add_missing_values(traj_continuous): 
+			random_missing_pct = int(len(traj_continuous)/2)
+			n_chunks = 3
+			min_size_gap = int(random_missing_pct/n_chunks)
+			missing_val_len = ([int(min_size_gap)]*(n_chunks-1) 
+								+ [min_size_gap+random_missing_pct%n_chunks])
+			traj_discont = traj_continuous
+			for c in range(n_chunks):
+				gap_start = int((c+0.5) * int(len(traj_continuous)/(n_chunks)))
+				traj_discont[gap_start:gap_start+missing_val_len[c]] = 0
+			return traj_discont  
+		traj_list = []                
+		for i in range(n_samples):
+			init_freq = assign_value_or_sample(self.init_freq, [0.4,0.8])
+			if self.final_freq is None:
+				final_freq = init_freq
+			else:
+				final_freq = assign_value_or_sample(self.final_freq, [0.4,0.8])
+			init_amplitude = assign_value_or_sample(self.init_amplitude, [0.,1.])
+			final_amplitude = assign_value_or_sample(self.final_amplitude, [0.,1.])
+
+			noisy_z0 = self.z0 + np.random.normal(loc=0., scale=0.1)
+
+			traj = generate_periodic(time_steps, init_freq = init_freq, 
+				init_amplitude = init_amplitude, starting_point = noisy_z0, 
+				final_amplitude = final_amplitude, final_freq = final_freq)
+			traj = add_missing_values(traj)
+            
+			# Cut the time dimension
+			traj = np.expand_dims(traj[:,1:], 0)
+			traj_list.append(traj)
+
+		# shape: [n_samples, n_timesteps, 2]
+		# traj_list[:,:,0] -- time stamps
+		# traj_list[:,:,1] -- values at the time stamps
+		traj_list = np.array(traj_list)
+		traj_list = torch.Tensor().new_tensor(traj_list, device = self.device)
+		traj_list = traj_list.squeeze(1)
+
+		traj_list = self.add_noise(traj_list, time_steps, noise_weight)
+		return traj_list    
